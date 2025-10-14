@@ -3,7 +3,7 @@ from pymatgen.core.structure import Structure
 # obtaining the pymatgen Structure instance of NdSiRu
 
 # creating an instance of the InvCryRep Class (initialization)
-backend=SLICES(relax_model="chgnet")
+backend=SLICES(relax_model="m3gnet")
 #backend=SLICES(relax_model="m3gnet")
 # converting a crystal structure to its SLICES string
 slices="Sb Ti Ti Ir 0 2 oo- 0 2 ooo 0 2 o-o 0 2 -oo 0 3 ooo 0 3 o-o 0 3 oo- 0 3 -o- 1 2 ooo 1 2 oo- 1 2 o-- 1 2 o-o 1 3 ooo 1 3 o-- 1 3 o-o 1 3 -o- "

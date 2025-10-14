@@ -33,8 +33,6 @@ from io import StringIO
 import pandas as pd
 import matplotlib.pyplot as plt
 from m3gnet.models import Relaxer
-from chgnet.model import StructOptimizer
-from chgnet.model.model import CHGNet
 import logging
 import tensorflow as tf
 import signal,gc
@@ -112,9 +110,6 @@ class SLICES:
         self.space_group_num = None
 
         # copy m3gnet model file?
-        if self.relax_model=="chgnet":
-            with self.suppress_output():
-                self.relaxer = StructOptimizer(optimizer_class="BFGS",use_device="cpu")
         if self.relax_model=="m3gnet":
             model_path=m3gnet.models.__path__[0]+'/MP-2021.2.8-EFS/'
             if not os.path.isdir(model_path):
@@ -1601,9 +1596,12 @@ class SLICES:
             coordinates_temp_cart=np.dot(coordinates_temp,lattice_vectors_scaled)  # using the orginal scaled lattice vectors to simplify calculation
             distance_matrix=self.all_distances(coordinates_temp_cart,coordinates_temp_cart)
             for i in range(len(uncovered_pair)):  #  cutoff        # epsilon       # sigma\
-                r_temp=distance_matrix[uncovered_pair[i][0],uncovered_pair[i][1]]
-                if r_temp<uncovered_pair_lj[i][0]:
-                    square_diff+=4*vbond_param_ave*(uncovered_pair_lj[i][1]/r_temp)**12 
+                r_temp = distance_matrix[uncovered_pair[i][0], uncovered_pair[i][1]]
+                if r_temp < 1e-8:
+                    r_temp = 1e-8
+                if r_temp < uncovered_pair_lj[i][0]:
+                    square_diff += 4 * vbond_param_ave * (uncovered_pair_lj[i][1] / r_temp) ** 12
+
         return square_diff
 
     def func_check(self,x,ndim,order,mat_target,colattice_inds,colattice_weights,cycle_rep,cycle_cocycle_I,num_nodes,shortest_path,spanning,uncovered_pair,uncovered_pair_lj,covered_pair_lj,vbond_param_ave_covered,vbond_param_ave,lattice_vectors_scaled,structure_species,angle_weight,repul,lattice_type,metric_tensor_std):

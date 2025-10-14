@@ -88,13 +88,23 @@ python -m pip install --upgrade pip
 wget https://github.com/xiaohang007/SLICES/archive/refs/heads/main.zip -O slices_repo.zip
 unzip slices_repo.zip
 cd SLICES-main
-conda env create --name slices --file=environments.yml
+conda create --name slices python=3.9
 conda activate slices
-pip install gradio==4.44.1 slices
+pip install  tensorflow-cpu==2.13.0
+pip install --no-deps m3gnet
+pip install smact==2.5.5
+pip install ase==3.22.1
+pip install pymatgen==2024.8.9
+pip install scipy==1.13.0
+pip install scikit-learn==1.3.1
+pip install numpy==1.26.4
+pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+pip install gradio==4.44.1
+pip install slices --no-deps
 pip install flash-attn --no-build-isolation
 ```
 安装完成！
-### 1.3 pip install flash-attn --no-build-isolation 这是安装Flash attention,能够将训练和推理提速2x, 如果不幸安装失败，那么就用MatterGPT_old文件夹进行计算就行。
+### 1.3 pip install flash-attn --no-build-isolation 这是安装Flash attention,能够将训练和推理提速2x, 如果安装成功，那么就用MatterGPT_flash文件夹进行计算。如果不幸安装失败，那么就用MatterGPT文件夹进行计算就行。
 ### 1.4 访问图形界面  注意访问图形界面必须安装slices>=2.0.8
 ```bash
 cd MatterGPT
@@ -131,12 +141,12 @@ sed -i 's/CPUs=8/CPUs=16/' slurm.conf
 3. **执行 Docker 集成命令：**
 ```bash
 # 从 Docker Hub 下载已经构建的 SLICES Docker 镜像
-docker pull xiaohang07/slices:v11
+docker pull xiaohang07/slices:v12
 
-# 如果 docker pull 不管用，您可以在 https://figshare.com/s/260701a1accd0192de20 下载压缩的 docker 镜像 v11。
+# 如果 docker pull 不管用，您可以在 https://figshare.com/s/260701a1accd0192de20 下载压缩的 docker 镜像 v12。
 
 # 然后，使用以下命令4线程并行解压缩以及加载此 docker 镜像：
-xz -T4 -dc dockerv11.tar.xz | docker load
+xz -T4 -dc dockerv12.tar.xz | docker load
 
 # 您也可以使用此仓库中的 Dockerfile 构建自己的 docker 镜像。感谢 Haidi Wang 教授 (https://haidi-ustc.github.io/about/) 提供的 Dockerfile。
 
@@ -144,7 +154,7 @@ xz -T4 -dc dockerv11.tar.xz | docker load
 sudo chmod +x entrypoint_set_cpus_gradio.sh entrypoint_set_cpus.sh ./src/slices/xtb_noring_nooutput_nostdout_noCN
 
 # 运行 Docker
-docker run -it -p 7860:7860 -h workq --shm-size=0.5gb --gpus all -v ./:/crystal xiaohang07/slices:v11 /crystal/entrypoint_set_cpus_gradio.sh
+docker run -it -p 7860:7860 -h workq --shm-size=0.5gb --gpus all -v ./:/crystal xiaohang07/slices:v12 /crystal/entrypoint_set_cpus_gradio.sh
 ```
 
 5. **访问图形界面**:

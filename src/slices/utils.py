@@ -22,6 +22,8 @@ import shutil  # 用于检测 SLURM 命令是否存在
 import logging
 import subprocess
 import getpass
+from multiprocessing import Pool, cpu_count
+from functools import partial
 @contextlib.contextmanager
 #temporarily change to a different working directory
 def temporaryWorkingDirectory(path):
@@ -227,27 +229,98 @@ def show_progress(total_jobs=None, check_interval=5):
             if total_jobs is None:
                 job_dirs = glob.glob("job_*")
                 total_jobs = len(job_dirs)
-            
+
             if total_jobs == 0:
                 print("未检测到任何任务需要监控。")
                 logging.info("未检测到任何任务需要监控。")
                 return
-            
-            with tqdm(total=total_jobs, position=0, leave=True, 
+
+            # 获取当前工作目录的绝对路径，用于匹配进程
+            current_dir = os.path.abspath(os.getcwd())
+
+            with tqdm(total=total_jobs, position=0, leave=True,
                     bar_format='{desc:<5.5}{percentage:3.0f}%|{bar:15}{r_bar}') as pbar:
                 completed = 0
+
                 while completed < total_jobs:
                     completed = 0
+
+                    # 获取所有正在运行的 python 进程及其工作目录
+                    running_jobs = set()
+                    try:
+                        # 使用 ps 命令获取所有 python 进程的 PID 和工作目录
+                        result = subprocess.run(
+                            ['ps', 'aux'],
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            text=True
+                        )
+
+                        for line in result.stdout.splitlines():
+                            # 查找包含 0_run.py 的 python 进程
+                            if 'python' in line and '0_run.py' in line:
+                                parts = line.split()
+                                if len(parts) > 1:
+                                    pid = parts[1]
+                                    try:
+                                        # 使用 pwdx 获取进程的工作目录
+                                        pwd_result = subprocess.run(
+                                            ['pwdx', pid],
+                                            stdout=subprocess.PIPE,
+                                            stderr=subprocess.PIPE,
+                                            text=True
+                                        )
+                                        if pwd_result.returncode == 0:
+                                            # pwdx 输出格式: "PID: /path/to/dir"
+                                            pwd_output = pwd_result.stdout.strip()
+                                            if ':' in pwd_output:
+                                                job_path = pwd_output.split(':', 1)[1].strip()
+                                                # 提取 job_X 目录名
+                                                if 'job_' in job_path:
+                                                    job_dir_name = os.path.basename(job_path)
+                                                    if job_dir_name.startswith('job_'):
+                                                        running_jobs.add(job_dir_name)
+                                    except:
+                                        pass
+                    except:
+                        pass
+
+                    # 检查每个任务的状态
                     for i in range(total_jobs):
                         job_dir = f'job_{i}'
-                        output_file1 = os.path.join(job_dir, 'output.json')
-                        output_file2 = os.path.join(job_dir, 'result.csv')
-                        if os.path.exists(output_file1) or os.path.exists(output_file2):
+                        is_completed = False
+
+                        # 如果进程不在运行列表中，检查输出文件
+                        if job_dir not in running_jobs:
+                            # 检查输出文件是否存在且有内容
+                            output_file1 = os.path.join(job_dir, 'output.json')
+                            output_file2 = os.path.join(job_dir, 'result.csv')
+
+                            # 检查 output.json
+                            if os.path.exists(output_file1):
+                                try:
+                                    file_size = os.path.getsize(output_file1)
+                                    if file_size > 10:
+                                        is_completed = True
+                                except (OSError, IOError):
+                                    pass
+
+                            # 检查 result.csv
+                            if not is_completed and os.path.exists(output_file2):
+                                try:
+                                    file_size = os.path.getsize(output_file2)
+                                    if file_size > 20:
+                                        is_completed = True
+                                except (OSError, IOError):
+                                    pass
+
+                        if is_completed:
                             completed += 1
+
                     pbar.n = completed
                     pbar.refresh()
                     time.sleep(check_interval)
-                    pbar.update(completed - pbar.n)
+
                 pbar.n = pbar.total
                 pbar.refresh()
         except KeyboardInterrupt:
@@ -580,3 +653,110 @@ def adaptive_dynamic_binning(data, target_column, test_size=0.2, random_state=42
     test_data = test_data.sample(frac=1, random_state=random_state).reset_index(drop=True)
     
     return train_data, test_data, bins
+
+def parallel_process_json(process_func, data, n_processes=16, output_file='result.csv', **kwargs):
+    """
+    使用multiprocessing Pool进行并行处理，每个进程使用单个CPU
+
+    Args:
+        process_func: 处理函数，接收单个数据项和kwargs作为参数
+        data (list): 要处理的数据列表（通常是从JSON文件加载的）
+        n_processes (int): 并行进程数，默认16
+        output_file (str): 输出文件名，默认'result.csv'
+        **kwargs: 传递给process_func的额外参数
+
+    Returns:
+        list: 处理结果列表
+    """
+    # 设置每个进程只使用1个CPU
+    os.environ["OMP_NUM_THREADS"] = "1"
+    os.environ["MKL_NUM_THREADS"] = "1"
+    os.environ["OPENBLAS_NUM_THREADS"] = "1"
+    os.environ["NUMEXPR_NUM_THREADS"] = "1"
+
+    # 确保进程数不超过数据量和CPU核心数
+    n_processes = min(n_processes, len(data), cpu_count())
+
+    print(f"使用 {n_processes} 个进程进行并行处理...")
+
+    # 创建部分函数，预先填充kwargs
+    func_with_kwargs = partial(process_func, **kwargs)
+
+    # 使用Pool进行并行处理
+    results = []
+    with Pool(processes=n_processes) as pool:
+        # 使用imap_unordered来获得更好的性能，并添加进度条
+        with tqdm(total=len(data), position=0, leave=True,
+                  bar_format='{desc:<5.5}{percentage:3.0f}%|{bar:15}{r_bar}') as pbar:
+            for result in pool.imap_unordered(func_with_kwargs, data, chunksize=1):
+                if result is not None:
+                    results.append(result)
+                pbar.update(1)
+
+    # 保存结果
+    if results and output_file:
+        with open(output_file, 'w') as f:
+            for result in results:
+                f.write(str(result) + '\n')
+        print(f"结果已保存到: {output_file}")
+
+    return results
+
+def parallel_process_csv(process_func, filename, n_processes=16, output_file='result.csv', skip_header=False, **kwargs):
+    """
+    使用multiprocessing Pool进行并行处理CSV文件，每个进程使用单个CPU
+
+    Args:
+        process_func: 处理函数，接收单行文本和kwargs作为参数
+        filename (str): CSV文件路径
+        n_processes (int): 并行进程数，默认16
+        output_file (str): 输出文件名，默认'result.csv'
+        skip_header (bool): 是否跳过第一行，默认False
+        **kwargs: 传递给process_func的额外参数
+
+    Returns:
+        list: 处理结果列表
+    """
+    # 设置每个进程只使用1个CPU
+    os.environ["OMP_NUM_THREADS"] = "1"
+    os.environ["MKL_NUM_THREADS"] = "1"
+    os.environ["OPENBLAS_NUM_THREADS"] = "1"
+    os.environ["NUMEXPR_NUM_THREADS"] = "1"
+
+    # 读取CSV文件
+    with open(filename, 'r') as f:
+        lines = f.readlines()
+
+    if skip_header:
+        lines = lines[1:]
+
+    # 过滤空行
+    lines = [line for line in lines if line.strip()]
+
+    # 确保进程数不超过数据量和CPU核心数
+    n_processes = min(n_processes, len(lines), cpu_count())
+
+    print(f"使用 {n_processes} 个进程进行并行处理...")
+
+    # 创建部分函数，预先填充kwargs
+    func_with_kwargs = partial(process_func, **kwargs)
+
+    # 使用Pool进行并行处理
+    results = []
+    with Pool(processes=n_processes) as pool:
+        # 使用imap_unordered来获得更好的性能，并添加进度条
+        with tqdm(total=len(lines), position=0, leave=True,
+                  bar_format='{desc:<5.5}{percentage:3.0f}%|{bar:15}{r_bar}') as pbar:
+            for result in pool.imap_unordered(func_with_kwargs, lines, chunksize=1):
+                if result is not None:
+                    results.append(result)
+                pbar.update(1)
+
+    # 保存结果
+    if results and output_file:
+        with open(output_file, 'w') as f:
+            for result in results:
+                f.write(str(result) + '\n')
+        print(f"结果已保存到: {output_file}")
+
+    return results

@@ -15,7 +15,7 @@ import sys
 from slices import check_SLICES, get_canonical_SLICES
 import configparser
 import ast
-
+from model import FlashCausalSelfAttention
 
 def get_crystal_system_distribution(train_file):
     """计算训练集中晶系的分布"""
@@ -102,7 +102,13 @@ if __name__ == '__main__':
     print('Loading model')
     model.load_state_dict(torch.load('./model/' + args.model_weight, map_location=torch.device(device)))
     model.to(device)
-    print('Model loaded')
+    # Convert relevant layers' weights to bfloat16
+    for name, module in model.named_modules():
+        if isinstance(module, FlashCausalSelfAttention):
+            for param in module.parameters():
+                param.data = param.data.to(torch.bfloat16)
+    model.eval()
+    print('Model loaded.')
 
     # 创建数据集实例以获取晶系编码/解码功能
     dataset = SliceDataset(args, [], char_list,  int(mp['block_size']))
