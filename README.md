@@ -101,10 +101,14 @@ pip install numpy==1.26.4
 pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu121
 pip install gradio==4.44.1
 pip install slices --no-deps
-pip install flash-attn --no-build-isolation
 ```
 安装完成！
-### 1.3 pip install flash-attn --no-build-isolation 这是安装Flash attention,能够将训练和推理提速2x, 如果安装成功，那么就用MatterGPT_flash文件夹进行计算。如果不幸安装失败，那么就用MatterGPT文件夹进行计算就行。
+### 1.3 安装flash-attention (可选)
+需要安装CUDA toolkit才能成功(具体参考https://github.com/Dao-AILab/flash-attention)，能够将训练和推理提速2x。如果安装成功，那么就用MatterGPT_flash文件夹进行计算。如果不幸安装失败，那么就用MatterGPT文件夹进行计算就行。
+```bash
+pip install flash-attn --no-build-isolation
+```
+
 ### 1.4 访问图形界面  注意访问图形界面必须安装slices>=2.0.8
 ```bash
 cd MatterGPT
