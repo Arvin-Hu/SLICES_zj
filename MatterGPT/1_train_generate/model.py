@@ -8,10 +8,12 @@ GPT model:
 """
 
 import math
-
+from flash_attn import flash_attn_qkvpacked_func
+from einops import rearrange
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
+
 
 class MatterGPTConfig:
     """ base GPT config, params common to all GPT versions """
@@ -32,62 +34,70 @@ class MatterGPT1Config(MatterGPTConfig):
     n_head = 12
     n_embd = 768
 
-class CausalSelfAttention(nn.Module):
+class FlashCausalSelfAttention(nn.Module):
     """
-    A vanilla multi-head masked self-attention layer with a projection at the end.
-    It is possible to use torch.nn.MultiheadAttention here but I am including an
-    explicit implementation here to show that there is nothing too scary here.
+    A flash attention implementation of multi-head masked self-attention.
     """
-
     def __init__(self, config):
         super().__init__()
         assert config.n_embd % config.n_head == 0
-        # key, query, value projections for all heads
-        self.key = nn.Linear(config.n_embd, config.n_embd)
-        self.query = nn.Linear(config.n_embd, config.n_embd)
-        self.value = nn.Linear(config.n_embd, config.n_embd)
-        # regularization
+        
+        # Key, query, value projections into a single matrix
+        self.qkv = nn.Linear(config.n_embd, 3 * config.n_embd)
+        
+        # Regularization
         self.attn_drop = nn.Dropout(config.attn_pdrop)
         self.resid_drop = nn.Dropout(config.resid_pdrop)
-        # output projection
+        
+        # Output projection
         self.proj = nn.Linear(config.n_embd, config.n_embd)
-        # causal mask to ensure that attention is only applied to the left in the input sequence
-        num = int(bool(config.num_props))
-        # num = 1
-        self.register_buffer("mask", torch.tril(torch.ones(config.block_size + num, config.block_size + num))
-                                     .view(1, 1, config.block_size + num, config.block_size + num))
-
+        
+        # Store dimensions
         self.n_head = config.n_head
+        self.n_embd = config.n_embd
+        self.head_dim = config.n_embd // config.n_head
+
+        # Register causal mask buffer for inference
+        num = int(bool(config.num_props))
+        mask_len = config.block_size + num
+        self.register_buffer(
+            "mask",
+            torch.tril(torch.ones(mask_len, mask_len))
+            .view(1, 1, mask_len, mask_len)
+        )
 
     def forward(self, x, layer_past=None):
         B, T, C = x.size()
 
-        # calculate query, key, values for all heads in batch and move head forward to be the batch dim
-        k = self.key(x).view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
-        q = self.query(x).view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
-        v = self.value(x).view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
+        # 确保输入和权重使用相同的数据类型
+        qkv_dtype = self.qkv.weight.dtype
+        x = x.to(qkv_dtype)
+        
+        # 计算 QKV
+        qkv = self.qkv(x)  # (B, T, 3 * n_embd)
+        qkv = qkv.reshape(B, T, 3, self.n_head, self.head_dim)
 
-        # causal self-attention; Self-attend: (B, nh, T, hs) x (B, nh, hs, T) -> (B, nh, T, T)
-        att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
-        att = att.masked_fill(self.mask[:,:,:T,:T] == 0, float('-inf'))
-        att = F.softmax(att, dim=-1)
-        attn_save = att
-        att = self.attn_drop(att)
-        y = att @ v # (B, nh, T, T) x (B, nh, T, hs) -> (B, nh, T, hs)
-        y = y.transpose(1, 2).contiguous().view(B, T, C) # re-assemble all head outputs side by side
+        # 使用 FlashAttention
+        out = flash_attn_qkvpacked_func(
+            qkv,
+            dropout_p=self.attn_drop.p if self.training else 0.0,
+            causal=True
+        )
 
-        # output projection
-        y = self.resid_drop(self.proj(y))
-        return y, attn_save
+        # 重塑输出并应用投影
+        out = rearrange(out, 'b s h d -> b s (h d)')
+        out = self.resid_drop(self.proj(out))
+        
+        return out, None
 
 class Block(nn.Module):
-    """ an unassuming Transformer block """
+    """ An unassuming Transformer block """
 
     def __init__(self, config):
         super().__init__()
         self.ln1 = nn.LayerNorm(config.n_embd)
         self.ln2 = nn.LayerNorm(config.n_embd)
-        self.attn = CausalSelfAttention(config)
+        self.attn = FlashCausalSelfAttention(config)  # Using FlashAttention version
         self.mlp = nn.Sequential(
             nn.Linear(config.n_embd, 4 * config.n_embd),
             nn.GELU(),
