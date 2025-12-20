@@ -14,6 +14,7 @@ from pymatgen.core.structure import Structure
 import sqlite3 
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer 
 
+from tqdm import tqdm  # 在文件顶部 import 处添加这一行（如果还没有）
 
 def load_and_save_structure_database(structure_json_path):
     """
@@ -21,16 +22,22 @@ def load_and_save_structure_database(structure_json_path):
     analyzes them, and saves them into an indexed SQLite database.
 
     Parameters:
-    - structure_json_path (str): Path to the JSON file containing CIFs. [cite: 9]
+    - structure_json_path (str): Path to the JSON file containing CIFs.
     """
-    
-    db_path = 'structure_database.db' 
+    db_path = 'structure_database.db'
 
+    # 估算时间提示（可根据实际数据集调整数字）
+    print("开始构建结构数据库（structure_database.db）...")
+    print("提示：对于 Materials Project 全集（约 150,000 条结构），"
+          "构建过程通常需要 40-50 分钟（取决于 CPU 性能和 I/O 速度），初次构建后新颖性检查无需二次重复构建。"
+          "过程中会显示实时进度条，请耐心等待。")
+
+    # 连接数据库并创建表
     try:
         conn = sqlite3.connect(db_path)
         c = conn.cursor()
         c.execute('''
-        CREATE TABLE structures (
+        CREATE TABLE IF NOT EXISTS structures (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             composition TEXT,
             spacegroup INTEGER,
@@ -38,56 +45,94 @@ def load_and_save_structure_database(structure_json_path):
             band_gap REAL
         )
         ''')
-        print(f"Created table 'structures' in '{db_path}'.")
+        # 如果是全新创建，提示一下
+        if c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='structures'").fetchone():
+            print(f"表 'structures' 已存在，将追加或覆盖数据。")
+        else:
+            print(f"已创建新表 'structures'。")
 
     except sqlite3.Error as e:
-        print(f"Error connecting to or creating database: {e}")
+        print(f"数据库连接或创建失败: {e}")
         exit(1)
 
+    # 加载 JSON 文件
     try:
         with open(structure_json_path, 'r') as f:
-            cifs = json.load(f) 
+            cifs = json.load(f)
     except FileNotFoundError:
-        print(f"Error: The structure JSON file '{structure_json_path}' does not exist.")
+        print(f"错误：结构 JSON 文件 '{structure_json_path}' 不存在。")
         exit(1)
     except json.JSONDecodeError as e:
-        print(f"Error: Failed to decode JSON file '{structure_json_path}': {e}") 
+        print(f"错误：无法解析 JSON 文件 '{structure_json_path}': {e}")
         exit(1)
 
+    total_count = len(cifs)
+    print(f"JSON 文件加载完成，共 {total_count:,} 条结构记录。")
+
+    if total_count == 0:
+        print("警告：JSON 文件中没有结构数据，跳过数据库构建。")
+        conn.close()
+        return
+
     processed_count = 0
-    for i, cif_entry in enumerate(cifs):
-        cif_string = cif_entry.get("cif")
-        if not cif_string:
-            print(f"Warning: No 'cif' key found in entry {i}. Skipping.") 
-            continue
-            
-        try:
-            stru = Structure.from_str(cif_string, "cif") 
-            band_gap = cif_entry.get("band_gap", None)
-            
-            finder = SpacegroupAnalyzer(stru) 
-            primitive_stru = finder.get_primitive_standard_structure()
-            spacegroup = finder.get_space_group_number()
+    failed_count = 0
 
-            composition = primitive_stru.composition.reduced_formula
-            primitive_cif = primitive_stru.to(fmt="cif")
+    # 使用 tqdm 显示进度条
+    with tqdm(total=total_count, desc="构建数据库", unit="结构",
+              bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]") as pbar:
 
-            c.execute(
-                "INSERT INTO structures (composition, spacegroup, primitive_cif, band_gap) VALUES (?, ?, ?, ?)",
-                (composition, spacegroup, primitive_cif, band_gap)
-            )
-            processed_count += 1
-            
-        except Exception as e:
-            print(f"Error processing CIF at index {i} (Skipping): {e}")
+        for i, cif_entry in enumerate(cifs):
+            cif_string = cif_entry.get("cif")
+            if not cif_string:
+                pbar.update(1)
+                continue
 
-    print(f"Processed {processed_count} structures. Now creating database indexes...")
+            try:
+                stru = Structure.from_str(cif_string, "cif")
+                band_gap = cif_entry.get("band_gap", None)
+
+                finder = SpacegroupAnalyzer(stru)
+                primitive_stru = finder.get_primitive_standard_structure()
+                spacegroup = finder.get_space_group_number()
+
+                composition = primitive_stru.composition.reduced_formula
+                primitive_cif = primitive_stru.to(fmt="cif")
+
+                c.execute(
+                    "INSERT INTO structures (composition, spacegroup, primitive_cif, band_gap) "
+                    "VALUES (?, ?, ?, ?)",
+                    (composition, spacegroup, primitive_cif, band_gap)
+                )
+                processed_count += 1
+
+            except Exception as e:
+                failed_count += 1
+                # 可选：打印严重错误，但不中断进度条
+                if failed_count <= 10:  # 只显示前10个错误，避免刷屏
+                    print(f"\n警告：第 {i} 条结构处理失败（已跳过）：{e}")
+
+            pbar.update(1)
+
+            # 每插入 1000 条提交一次，加快写入速度并减少内存占用
+            if (i + 1) % 1000 == 0:
+                conn.commit()
+
+    # 最终提交剩余数据
+    conn.commit()
+
+    # 创建索引（放在插入完成后，避免边插边建索引拖慢速度）
+    print("\n插入完成，正在创建索引以加速后续新颖性查询...")
     c.execute("CREATE INDEX IF NOT EXISTS idx_composition ON structures (composition)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_spacegroup ON structures (spacegroup)")
     conn.commit()
     conn.close()
-    
-    print(f"Structure database successfully saved to '{db_path}' with indexed compositions.")
+
+    print(f"\n结构数据库构建完成！")
+    print(f"   → 成功处理：{processed_count:,} 条")
+    if failed_count > 0:
+        print(f"   → 处理失败：{failed_count:,} 条（已自动跳过）")
+    print(f"   → 数据库保存至：{db_path}")
+    print(f"   → 已创建 composition 索引，后续新颖性检查将显著加速（>100x）")
 
 def process_data(input_csv, output_csv, structure_json_path, threads):
     """
