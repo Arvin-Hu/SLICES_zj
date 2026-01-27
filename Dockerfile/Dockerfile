@@ -1,5 +1,6 @@
 # 基于 nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu20.04 镜像
-FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu20.04
+# FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu20.04
+FROM nvidia/cuda:12.1.1-cudnn8-devel-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive \
     TZ=Asia/Shanghai
