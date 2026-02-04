@@ -8,7 +8,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["XTB_MOD_PATH"] = os.path.abspath(os.path.dirname(__file__))+"/xtb_noring_nooutput_nostdout_noCN"
-os.environ["PYTHONWARNINGS"]="ignore" 
+os.environ["PYTHONWARNINGS"]="ignore"
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pymatgen.core.structure import Structure
 from pymatgen.analysis.graphs import StructureGraph
@@ -77,7 +77,7 @@ def function_timeout(seconds: int):
 
 class SLICES:
     """Invertible Crystal Representation (SLICES and labeled quotient graph)
-    """    
+    """
     def __init__(self, atom_types=None, edge_indices=None, to_jimages=None, graph_method='econnn', check_results=False, optimizer="BFGS",fmax=0.2,steps=100,relax_model="m3gnet"):
         """__init__
 
@@ -85,15 +85,15 @@ class SLICES:
             atom_types (np.array, optional): Atom types in a SLICES string. Defaults to None.
             edge_indices (np.array, optional): Edge indices in a SLICES string. Defaults to None.
             to_jimages (np.array, optional): Edge labels in a SLICES string. Defaults to None.
-            graph_method (str, optional): The method used for analyzing the local chemical environments 
+            graph_method (str, optional): The method used for analyzing the local chemical environments
                 to generate labeled quotient graphs. Defaults to 'econnn'.
-            check_results (bool, optional): Flag to indicate whether to output intermediate results for 
+            check_results (bool, optional): Flag to indicate whether to output intermediate results for
                 debugging purposes. Defaults to False.
             optimizer (str, optional): Optimizer used in M3GNet_IAP optimization. Defaults to "BFGS".
-            fmax (float, optional): Convergence criterion of maximum allowable force on each atom. 
+            fmax (float, optional): Convergence criterion of maximum allowable force on each atom.
                 Defaults to 0.2.
             steps (int, optional): Max steps. Defaults to 100.
-        """        
+        """
         tf.keras.backend.clear_session()
         gc.collect()
         self.atom_types = atom_types
@@ -132,7 +132,7 @@ class SLICES:
                 sys.stdout = old_stdout
                 sys.stderr = old_stderr
 
-    @staticmethod 
+    @staticmethod
     def get_index_list_allow_duplicates(ori, mod):
         indexes = defaultdict(deque)
         for i, x in enumerate(mod):
@@ -161,7 +161,7 @@ class SLICES:
         structure_components=get_structure_components(structure_graph)
         dim=[component['dimensionality']  for component in structure_components]
         return all(b==2 for b in dim)
-        
+
     def check_3D(self, structure):
         structure_graph=self.structure2structure_graph(structure)
         structure_components=get_structure_components(structure_graph)
@@ -191,7 +191,7 @@ class SLICES:
             structure_graph = StructureGraph.with_local_env_strategy(
                 structure, CrystalNN(porous_adjustment=False,weighted_cn=True))
         else:
-            print("ERROR - graph_method not implemented") 
+            print("ERROR - graph_method not implemented")
         return structure_graph,structure
 
     def structure2structure_graph(self,structure):
@@ -216,7 +216,7 @@ class SLICES:
             structure_graph = StructureGraph.with_local_env_strategy(
                 structure, CrystalNN(porous_adjustment=False,weighted_cn=True))
         else:
-            print("ERROR - graph_method not implemented") 
+            print("ERROR - graph_method not implemented")
         return structure_graph
 
     def from_SLICES(self,SLICES,strategy=4,fix_duplicate_edge=True):
@@ -224,7 +224,7 @@ class SLICES:
 
         Args:
             SLICES (str): SLICES string.
-            fix_duplicate_edge (bool, optional): Flag to indicate whether to fix duplicate edges in 
+            fix_duplicate_edge (bool, optional): Flag to indicate whether to fix duplicate edges in
             SLICES (due to RNN's difficulty in learning long SLICES). Defaults to False.
 
         Raises:
@@ -300,11 +300,11 @@ class SLICES:
                     break
                 except:
                     continue
-                
+
             if first_elem_idx is None:
                 # No element symbols found - invalid SLICES
                 raise Exception("Error: no valid element symbols found")
-                
+
             # Get space group number if tokenized encoding exists
             if first_elem_idx > 0:
                 letter_enc = "".join(tokens[:first_elem_idx])
@@ -326,7 +326,7 @@ class SLICES:
             num_edges = int((len(tokens)-start_idx)/3)
             edge_indices = np.zeros([num_edges,2], dtype=int)
             to_jimages = np.zeros([num_edges,3], dtype=int)
-            
+
             for i in range(num_edges):
                 edge = tokens[start_idx+i*3:start_idx+(i+1)*3]
                 edge_indices[i,0] = int(edge[0])
@@ -341,7 +341,7 @@ class SLICES:
                     elif edge[2][j] == '+':
                         to_jimages[i,j] = 1
                     else:
-                        raise Exception("Error: wrong edge label")        
+                        raise Exception("Error: wrong edge label")
 
         if fix_duplicate_edge:
             edge_data_ascending=[]
@@ -357,7 +357,7 @@ class SLICES:
 
         self.edge_indices=edge_indices
         self.to_jimages=to_jimages
-        self.atom_types=np.array([int(PERIODIC_DATA.loc[PERIODIC_DATA["symbol"]==i].values[0][0]) for i in self.atom_symbols])    
+        self.atom_types=np.array([int(PERIODIC_DATA.loc[PERIODIC_DATA["symbol"]==i].values[0][0]) for i in self.atom_symbols])
 
     def get_slices_by_strategy(self, strategy, atom_symbols, edge_indices, to_jimages, space_group_num):
         strategy_method_map = {
@@ -419,14 +419,14 @@ class SLICES:
     @staticmethod
     def get_slices4(atom_symbols, edge_indices, to_jimages, space_group_num):
         """Get SLICES string with strategy 4.
-        
+
         Args:
             atom_symbols (list): List of atom symbols.
             edge_indices (np.array): Edge indices.
             to_jimages (np.array): Edge labels.
             space_group_num (int, optional): Space group number. If provided, will add tokenized encoding.
                 Defaults to None.
-        
+
         Returns:
             str: SLICES string.
         """
@@ -435,11 +435,11 @@ class SLICES:
         if space_group_num is not None:
             tokenized_enc = get_tokenized_enc(space_group_num)
             SLICES = tokenized_enc + ' '
-                
+
         # Add atom symbols
         for i in atom_symbols:
             SLICES += i + ' '
-            
+
         # Add edge information
         for i in range(len(edge_indices)):
             SLICES += str(edge_indices[i][0]) + ' ' + str(edge_indices[i][1]) + ' '
@@ -492,13 +492,13 @@ class SLICES:
             SLICES (str): A SLICES string.
             dupli_check (bool, optional): Flag to indicate whether to check if a SLICES has duplicate
                 edges. Defaults to True.
-            graph_rank_check (bool, optional): A flag that indicates whether to verify if a SLICES corresponds 
+            graph_rank_check (bool, optional): A flag that indicates whether to verify if a SLICES corresponds
             to a crystal graph with a rank H1(X,Z) < 3. The default value is True. It is advisable to set it to
-            True for generative AI models and to False for property prediction AI models. In cases where the 
-            rank of H1(X,Z) in the graph is less than 3, it may not be possible to reconstruct this SLICES 
-            string to the original structure using SLI2Cry. This limitation stems from Eon's method's inability 
-            to generate a 3D embedding for a graph with a rank of H1(X,Z) less than 3. For example, if H1(X,Z)=2, 
-            then Eon's method can only create a 2D embedding for this graph. However, for property prediction AI 
+            True for generative AI models and to False for property prediction AI models. In cases where the
+            rank of H1(X,Z) in the graph is less than 3, it may not be possible to reconstruct this SLICES
+            string to the original structure using SLI2Cry. This limitation stems from Eon's method's inability
+            to generate a 3D embedding for a graph with a rank of H1(X,Z) less than 3. For example, if H1(X,Z)=2,
+            then Eon's method can only create a 2D embedding for this graph. However, for property prediction AI
             models, this limitation is irrelevant since invertibility is not required.
 
         Returns:
@@ -511,7 +511,7 @@ class SLICES:
                 self.from_SLICES(SLICES,strategy,fix_duplicate_edge=True)
         except:
             return False
-        # make sure the rank of first homology group of graph >= 3, in order to get 3D embedding 
+        # make sure the rank of first homology group of graph >= 3, in order to get 3D embedding
         G = nx.MultiGraph()
         G.add_nodes_from([i for i in range(len(self.atom_types))])
         G.add_edges_from(self.edge_indices)    # convert to MultiGraph (from MultiDiGraph) !MST can only deal with MultiGraph
@@ -559,7 +559,7 @@ class SLICES:
         a_add_b = edge_index_covered[0]+edge_index_covered[1]
         if len(a_add_b)>=len(edge_index_covered[2]):
             c_sub_ab = [i for i in a_add_b if i not in edge_index_covered[2]]
-        else:    
+        else:
             c_sub_ab = [i for i in edge_index_covered[2] if i not in a_add_b]
         if len(b_sub_a)==0 or len(c_sub_ab)==0:
             return False
@@ -633,7 +633,7 @@ class SLICES:
                 edge_indices_asc[i][1]=edge_indices[i][0]
                 to_jimages_asc[i]=self.to_jimages[i]*-1
         atom_symbols = [str(ElementBase.from_Z(i)) for i in atom_types_sorted]
-        c =np.concatenate((edge_indices_asc, to_jimages_asc), axis=1) 
+        c =np.concatenate((edge_indices_asc, to_jimages_asc), axis=1)
         sorted_data = np.array(sorted(c, key=lambda x: (x[0], x[1])))
         edge_indices = sorted_data[:, :2]
         to_jimages = sorted_data[:, 2:]
@@ -650,14 +650,14 @@ class SLICES:
         sorted_column_indices = np.lexsort((custom_sort_rule(to_jimages), column_sums))
         to_jimages_column_sorted = to_jimages[:, sorted_column_indices]
         # sort edge+ij together
-        c =np.concatenate((edge_indices, to_jimages_column_sorted), axis=1) 
+        c =np.concatenate((edge_indices, to_jimages_column_sorted), axis=1)
         sorted_data = np.array(sorted(c, key=lambda x: (x[0], x[1],x[2],x[3],x[4])))
         edge_indices = sorted_data[:, :2]
         to_jimages = sorted_data[:, 2:]
         return self.get_slices_by_strategy(strategy,atom_symbols,edge_indices,to_jimages,space_group_num)
 
     def SLICES2formula(self,SLICES):
-        """Convert a SLICES string to its chemical formula (to facilitate composition screening 
+        """Convert a SLICES string to its chemical formula (to facilitate composition screening
         before SLICES2structure).
 
         Args:
@@ -685,7 +685,7 @@ class SLICES:
 
         Returns:
             str: A SLICES string.
-        """ 
+        """
         structure_graph=self.structure2structure_graph(structure)
         atom_types = np.array(structure.atomic_numbers)
         atom_symbols = [str(ElementBase.from_Z(i)) for i in atom_types]
@@ -699,7 +699,7 @@ class SLICES:
             edge_indices.append([i, j])
             to_jimages.append(to_jimage)
         return self.get_slices_by_strategy(strategy,atom_symbols,edge_indices,to_jimages,space_group_num)
-        
+
     def structure2randomSLICES(self, structure, strategy=4, num=50,
                               shuffle_atom_order=True,
                               shuffle_bond_order=True,
@@ -732,7 +732,7 @@ class SLICES:
             print(f"生成原始 SLICES 时出错: {e}")
             # 根据需要，可以选择是否继续生成增强的 SLICES
             # 这里选择继续
-        
+
 
         # 计算需要生成的总排列数
         total_permutations = num * batch_multiplier  # 确保这行代码存在
@@ -822,7 +822,7 @@ class SLICES:
         SLICES_list = list(SLICES_set)
         random.shuffle(SLICES_list)
         return SLICES_list[:num]
-        
+
     def get_dim(self,structure):
         """Get the dimension of a Structure.
 
@@ -841,7 +841,7 @@ class SLICES:
         elif self.graph_method == 'crystalnn':
             bonded_structure = CrystalNN(porous_adjustment=False,weighted_cn=True).get_bonded_structure(structure)
         else:
-            print("ERROR - graph_method not implemented") 
+            print("ERROR - graph_method not implemented")
         dim=get_dimensionality_larsen(bonded_structure)
         return dim
 
@@ -861,14 +861,14 @@ class SLICES:
         edge_indices, to_jimages = [], []
         for i, j, to_jimage in structure_graph.graph.edges(data='to_jimage'):
             edge_indices.append([i, j])
-            to_jimages.append(to_jimage)    
+            to_jimages.append(to_jimage)
         self.edge_indices = np.array(edge_indices)
         self.to_jimages = np.array(to_jimages)
 
     def structure2crystal_graph_rep(self, structure):
         """Convert a pymatgen structure object into the crystal graph representation:
             atom_types, edge_indices, to_jimages.
-        
+
         Args:
             structure (Structure): A pymatgen Structure object.
 
@@ -882,30 +882,30 @@ class SLICES:
         structure_graph = self.structure2structure_graph(structure)
         if self.check_results:
             structure_graph.draw_graph_to_file('graph.png',hide_image_edges = False)
-        
+
         # Get space group number using SpacegroupAnalyzer
         try:
             analyzer = SpacegroupAnalyzer(structure)
             space_group_number = analyzer.get_space_group_number()
         except:
             space_group_number = None
-            
+
         atom_types = np.array(structure.atomic_numbers)
         G = nx.MultiGraph()
         G.add_nodes_from(structure_graph.graph.nodes)
         G.add_edges_from(structure_graph.graph.edges)
-        
+
         edge_indices, to_jimages = [], []
         for i, j, to_jimage in structure_graph.graph.edges(data='to_jimage'):
             edge_indices.append([i, j])
             to_jimages.append(to_jimage)
-        
+
         return atom_types, np.array(edge_indices), np.array(to_jimages), space_group_number
 
 
     def get_nbf_blist(self):
         """ (1) Get nbf(neighbor list with atom types for xtb_mod).
-            (2) Get blist(node indexes of the central unit cell edges in the 3*3*3 supercell). 
+            (2) Get blist(node indexes of the central unit cell edges in the 3*3*3 supercell).
 
         Returns:
             str: nbf.
@@ -918,7 +918,7 @@ class SLICES:
             for i in range(len(OFFSET)):
                 for j in range(len(voltage)):
                     temp=[]
-                    temp.append(voltage[j,0]+i*n_atom)   
+                    temp.append(voltage[j,0]+i*n_atom)
                     voltage_sum=voltage[j,2:]+OFFSET[i,:]
                     voltage_sum_new=voltage_sum.copy()
                     for k in range(len(voltage_sum)):
@@ -969,7 +969,7 @@ class SLICES:
                 for i in range(len(voltage_super_cut)):
                     voltage_super_cut[i,0]=voltage_super_cut[i,0]-len(np.where(no_neighbor_index < voltage_super_cut[i,0])[0]) # offset index
                     voltage_super_cut[i,1]=voltage_super_cut[i,1]-len(np.where(no_neighbor_index < voltage_super_cut[i,1])[0])
-                for i in range(len(voltage_super)):  # modify voltage_super's index 
+                for i in range(len(voltage_super)):  # modify voltage_super's index
                     voltage_super[i,0]=voltage_super[i,0]-len(np.where(no_neighbor_index < voltage_super[i,0])[0]) # offset index
                     voltage_super[i,1]=voltage_super[i,1]-len(np.where(no_neighbor_index < voltage_super[i,1])[0])
                 # get atomic symbol list of the supercell
@@ -983,8 +983,8 @@ class SLICES:
             for i in range(n_atom*27-len(no_neighbor_index)):
                 row,column=np.where(voltage_super_cut==i)
                 total=len(row)
-                if total>19:   # deal with cases with more than 19 neighbors 
-                    row=row[:19]  
+                if total>19:   # deal with cases with more than 19 neighbors
+                    row=row[:19]
                     column=column[:19]
                 for j in range(len(row)):
                     neighbor_list[j,i]=voltage_super_cut[row[j],1-column[j]] + 1   # nbf indexing starts with 1 instead of 0
@@ -1051,7 +1051,7 @@ class SLICES:
             elif len(temp2[0]):
                 index=temp2[0][0]
             else:
-                print('Cannot find bond!!!') 
+                print('Cannot find bond!!!')
                 continue
             if np.isnan(data['vbond'][index][2]):
                 bond_weight.append(1)
@@ -1069,7 +1069,7 @@ class SLICES:
             temp1=np.where((blist_original ==ab ).all(axis=1))
             temp2=np.where((blist_flip ==ab ).all(axis=1))
             temp3=np.where((blist_original ==ac ).all(axis=1))
-            temp4=np.where((blist_flip ==ac ).all(axis=1))   
+            temp4=np.where((blist_flip ==ac ).all(axis=1))
             if (len(temp1[0])+len(temp2[0])) and (len(temp3[0])+len(temp4[0])):
                 sign=1
                 if len(temp1[0]):
@@ -1078,14 +1078,14 @@ class SLICES:
                     index_x=temp2[0][0]
                     sign=sign*(-1)
                 else:
-                    print('Cannot find bond1!!!') 
+                    print('Cannot find bond1!!!')
                 if len(temp3[0]):
                     index_y=temp3[0][0]
                 elif len(temp4[0]):
                     index_y=temp4[0][0]
                     sign=sign*(-1)
                 else:
-                    print('Cannot find bond2!!!')  
+                    print('Cannot find bond2!!!')
                 inner_p_target[index_x,index_y]=sign*math.sqrt(inner_p_target[index_x,index_x])*math.sqrt(inner_p_target[index_y,index_y])*math.cos(data['vangl'][i][0])
                 colattice_inds[0].append(int(index_x))
                 colattice_inds[1].append(int(index_y))
@@ -1097,7 +1097,7 @@ class SLICES:
                 temp_max=colattice_weights[i]
         for i in range(len(colattice_weights)):
             colattice_weights[i]=round(colattice_weights[i]/temp_max,2)
-        temp_max=0 
+        temp_max=0
         for i in range(len(bond_weight)):
             if bond_weight[i] > temp_max:
                 temp_max=bond_weight[i]
@@ -1158,7 +1158,7 @@ class SLICES:
                 elif len(temp2[0]):
                     index=temp2[0][0]
                 else:
-                    print('Cannot find bond!!!') 
+                    print('Cannot find bond!!!')
                     continue
                 if np.isnan(data['vbond'][index][2]):
                     bond_weight.append(1)
@@ -1176,7 +1176,7 @@ class SLICES:
                 temp1=np.where((blist_original ==ab ).all(axis=1))
                 temp2=np.where((blist_flip ==ab ).all(axis=1))
                 temp3=np.where((blist_original ==ac ).all(axis=1))
-                temp4=np.where((blist_flip ==ac ).all(axis=1))   
+                temp4=np.where((blist_flip ==ac ).all(axis=1))
                 if (len(temp1[0])+len(temp2[0])) and (len(temp3[0])+len(temp4[0])):
                     sign=1
                     if len(temp1[0]):
@@ -1185,14 +1185,14 @@ class SLICES:
                         index_x=temp2[0][0]
                         sign=sign*(-1)
                     else:
-                        print('Cannot find bond1!!!') 
+                        print('Cannot find bond1!!!')
                     if len(temp3[0]):
                         index_y=temp3[0][0]
                     elif len(temp4[0]):
                         index_y=temp4[0][0]
                         sign=sign*(-1)
                     else:
-                        print('Cannot find bond2!!!') 
+                        print('Cannot find bond2!!!')
                     inner_p_target[index_x,index_y]=sign*math.sqrt(inner_p_target[index_x,index_x])*math.sqrt(inner_p_target[index_y,index_y])*math.cos(data['vangl'][i][0])
                     colattice_inds[0].append(int(index_x))
                     colattice_inds[1].append(int(index_y))
@@ -1204,7 +1204,7 @@ class SLICES:
                     temp_max=colattice_weights[i]
             for i in range(len(colattice_weights)):
                 colattice_weights[i]=round(colattice_weights[i]/temp_max,2)
-            temp_max=0 
+            temp_max=0
             for i in range(len(bond_weight)):
                 if bond_weight[i] > temp_max:
                     temp_max=bond_weight[i]
@@ -1237,9 +1237,9 @@ class SLICES:
         net_voltage=np.array(net_voltage)
         return x_dat, net_voltage
 
-    @staticmethod 
-    def get_uncovered_pair(graph):  # 
-        """Get atom pairs not covered by edges of the structure graph. Assuming that all atoms 
+    @staticmethod
+    def get_uncovered_pair(graph):  #
+        """Get atom pairs not covered by edges of the structure graph. Assuming that all atoms
             has been included in graph.
 
         Args:
@@ -1280,7 +1280,7 @@ class SLICES:
         uncovered_pair_lj=[]
         # read lj params
         lj_param={}
-        for i in LJ_PARAMS_LIST:   
+        for i in LJ_PARAMS_LIST:
             lj_param[i[0]]=[i[1],i[2]]
         for i in uncovered_pair:
             if i[0]==i[1]:
@@ -1299,7 +1299,7 @@ class SLICES:
         covered_pair_lj=[]
         # read lj params
         lj_param={}
-        for i in LJ_PARAMS_LIST:   
+        for i in LJ_PARAMS_LIST:
             lj_param[i[0]]=[i[1],i[2]]
         for i in self.edge_indices:
             if i[0]==i[1]:
@@ -1326,7 +1326,7 @@ class SLICES:
         inner_p_std_diag=np.diag(inner_p_std)
         nonzero_edge_index=np.where(inner_p_std_diag>0.0001)[0].tolist()
         if len(nonzero_edge_index) < len(inner_p_std_diag):
-            self.unstable_graph = True  
+            self.unstable_graph = True
         else:
             self.unstable_graph = False  # to refresh this setting in case of Exception
         scale_sum_temp=0
@@ -1351,27 +1351,27 @@ class SLICES:
         lattice_vectors_scaled = np.dot(lattice_vectors_std,np.diag(scale_vector))
         return lattice_vectors_scaled
 
-    @staticmethod 
+    @staticmethod
     def get_coordinates(arc_coord,num_nodes,shortest_path_spanning_graph,spanning):
         """Get fractional coordinates of atoms from fractional coordinates of edge vectors.
 
         Args:
             arc_coord (np.array): Edge vectors (fractional coords) of a labeled quotient graph.
             num_nodes (int): Number of atoms(nodes) of a labeled quotient graph.
-            shortest_path_spanning_graph (list): Shortest path of the spanning graph of a labeled 
+            shortest_path_spanning_graph (list): Shortest path of the spanning graph of a labeled
                 quotient graph.
             spanning (list): Spanning graph of a labeled quotient graph.
 
         Returns:
             np.array: Fractional coordinates of atoms.
         """
-        coordinates=np.zeros((num_nodes,3))  #v0 
+        coordinates=np.zeros((num_nodes,3))  #v0
         if num_nodes>1:  # !deal with single node case
             for i in range(num_nodes)[1:]:  # get vi
                 for h in range(len(shortest_path_spanning_graph[str(i+1)][1:])):    # every edge in shortest path  # str(i) convert '0' to 0
-                    for j in spanning:            
-                        if set(shortest_path_spanning_graph[str(i+1)][h:h+2])==set(j[:2]):  # compare with every edge in spanning tree  
-                            if int(shortest_path_spanning_graph[str(i+1)][h])== int(j[0]):                           
+                    for j in spanning:
+                        if set(shortest_path_spanning_graph[str(i+1)][h:h+2])==set(j[:2]):  # compare with every edge in spanning tree
+                            if int(shortest_path_spanning_graph[str(i+1)][h])== int(j[0]):
                                 coordinates[i,:]=coordinates[i,:]+arc_coord[int(j[2][1:])-1]
                             else:
                                 coordinates[i,:]=coordinates[i,:]-arc_coord[int(j[2][1:])-1]
@@ -1394,7 +1394,7 @@ class SLICES:
             np.array: Updated metric tensor based on colattice vectors, x.
             np.array: Cocycle rep, the bottom n-1 rows of the alpha matrix.
         """
-        if lattice_type==1: 
+        if lattice_type==1:
             cell_lengths = x[:1]
             cocycle = x[1:]
             mt = np.empty((ndim, ndim))
@@ -1411,27 +1411,27 @@ class SLICES:
             if lattice_type==22:
                 mt[0, 0] = x[0]
                 mt[1, 1] = x[1]
-                mt[2, 2] = x[0]      
+                mt[2, 2] = x[0]
             if lattice_type==23:
                 mt[0, 0] = x[0]
                 mt[1, 1] = x[0]
-                mt[2, 2] = x[1]            
+                mt[2, 2] = x[1]
         else:
             cell_lengths = x[:3]
             cocycle = x[3:]
-            mt = np.empty((ndim, ndim))   
+            mt = np.empty((ndim, ndim))
             for i in range(ndim):
                 mt[i, i] = x[i]
         g = np.triu_indices(ndim, 1)
         for (i, j) in zip(*g):
             mt[i, j] = metric_tensor_std[i, j]/np.sqrt(metric_tensor_std[i, i])/np.sqrt(metric_tensor_std[j, j])*np.sqrt(mt[i, i])*np.sqrt(mt[j, j])
-            mt[j, i] = mt[i, j]                 
+            mt[j, i] = mt[i, j]
         if cocycle_size == 0:
             cocycle_rep = None
         else:
             cocycle_rep = np.reshape(cocycle, (cocycle_size, ndim))
         return mt, cocycle_rep
-    
+
     @staticmethod
     def initialize_x_bounds(ndim,cocycle_rep,metric_tensor_std,lattice_type,delta_theta,delta_x,lattice_expand,lattice_shrink):
         """Initialize x vectors and bounds based on metric_tensor_std, lattice_type and other settings.
@@ -1441,7 +1441,7 @@ class SLICES:
             cocycle_rep (np.array): Cocycle rep, the bottom n-1 rows of the alpha matrix.
             metric_tensor_std (np.array): Metric tensor of the barycentric embedding.
             lattice_type (int): Lattice type. 1: a=b=c, 21: a!=b=c, 22: b!=a=c, 23: c!=a=b , 3: a!=b!=c.
-            delta_theta (float): Angle change limit(deprecated! not deleted due to compatibility of HTS 
+            delta_theta (float): Angle change limit(deprecated! not deleted due to compatibility of HTS
                 scripts, will be deleted in future).
             delta_x (float): Maximum x change allowed.
             lattice_expand (float): Maximum lattice expansion allowed.
@@ -1451,8 +1451,8 @@ class SLICES:
             np.array: Intitial value of x.
             list: Upper and lower bounds of x.
         """
-        if lattice_type==1: 
-            # equal length 
+        if lattice_type==1:
+            # equal length
             mtsize=1
             if cocycle_rep is not None:
                 size = int(mtsize + cocycle_rep.shape[0] * ndim)
@@ -1495,7 +1495,7 @@ class SLICES:
                 x[xinc] = metric_tensor_std[2,2]
                 ub[xinc] = metric_tensor_std[2,2]*(1.01*lattice_expand)**2  # max_cell
                 lb[xinc] = metric_tensor_std[2,2]*(lattice_shrink)**2  # min_cell
-                xinc += 1                
+                xinc += 1
         else:
             # triclinic
             mtsize=3
@@ -1518,13 +1518,13 @@ class SLICES:
             lb[xinc:] = -1*delta_x
         bounds=[]
         for i in range(len(x)):
-            bounds.append((lb[i],ub[i]))        
+            bounds.append((lb[i],ub[i]))
         return x, bounds
 
     @staticmethod
     def all_distances(coords1, coords2):
         """Returns the distances between two lists of coordinates
-        
+
         Args:
             coords1: First set of Cartesian coordinates.
             coords2: Second set of Cartesian coordinates.
@@ -1542,7 +1542,7 @@ class SLICES:
         cycle_rep,cycle_cocycle_I,num_nodes,shortest_path,spanning,uncovered_pair, \
         uncovered_pair_lj,covered_pair_lj,vbond_param_ave_covered,vbond_param_ave, \
         lattice_vectors_scaled,structure_species,angle_weight,repul,lattice_type,metric_tensor_std):
-        """Objective function: sum squared differences between the inner products of the GFN-FF predicted 
+        """Objective function: sum squared differences between the inner products of the GFN-FF predicted
         geometry and the associated inner products (gjk) of the edges in the non-barycentric embedded net.
 
         Args:
@@ -1553,14 +1553,14 @@ class SLICES:
             colattice_inds (list): keep track of all the valid colattice dot indices.
             colattice_weights (list): Colattice weights for bond or angle.
             cycle_cocycle_I (np.array): The inverse of B matrix.
-            num_nodes (int): Number of nodes of the labeled quotient graph(duplicate! not deleted due to 
-                compatibility of HTS scripts, will be deleted in future). 
+            num_nodes (int): Number of nodes of the labeled quotient graph(duplicate! not deleted due to
+                compatibility of HTS scripts, will be deleted in future).
             shortest_path (list): Shortest path of the spanning graph of the labeled quotient graph.
             spanning (list): Spanning graph of the labeled quotient graph.
             uncovered_pair (list): Atom pairs not covered by edges of the structure graph.
             covered_pair_lj (list): lj parameters for atom pairs covered by edges of the structure graph.
-            vbond_param_ave_covered (float): Repulsive potential well depth of atom pairs covered by edges 
-                of the structure graph. 
+            vbond_param_ave_covered (float): Repulsive potential well depth of atom pairs covered by edges
+                of the structure graph.
             vbond_param_ave (float): Repulsive potential well depth of atom pairs not covered by edges of
                 the structure graph.
             structure_species (list): Atom symbols of the labeled quotient graph.
@@ -1575,7 +1575,7 @@ class SLICES:
         square_diff=0
         # convert x to inner_p
         metric_tensor, cocycle_rep = self.convert_params(x, ndim, int(order - 1),lattice_type,metric_tensor_std)
-        if cocycle_rep is not None: 
+        if cocycle_rep is not None:
             periodic_rep = np.concatenate((cycle_rep, cocycle_rep))
         else:
             periodic_rep=cycle_rep
@@ -1605,7 +1605,7 @@ class SLICES:
         return square_diff
 
     def func_check(self,x,ndim,order,mat_target,colattice_inds,colattice_weights,cycle_rep,cycle_cocycle_I,num_nodes,shortest_path,spanning,uncovered_pair,uncovered_pair_lj,covered_pair_lj,vbond_param_ave_covered,vbond_param_ave,lattice_vectors_scaled,structure_species,angle_weight,repul,lattice_type,metric_tensor_std):
-        """Objective function: sum squared differences between the inner products of the GFN-FF predicted 
+        """Objective function: sum squared differences between the inner products of the GFN-FF predicted
         geometry and the associated inner products (gjk) of the edges in the non-barycentric embedded net.
         This version of func() will output debug info.
 
@@ -1617,14 +1617,14 @@ class SLICES:
             colattice_inds (list): keep track of all the valid colattice dot indices.
             colattice_weights (list): Colattice weights for bond or angle.
             cycle_cocycle_I (np.array): The inverse of B matrix.
-            num_nodes (int): Number of nodes of the labeled quotient graph(duplicate! not deleted due to 
-                compatibility of HTS scripts, will be deleted in future). 
+            num_nodes (int): Number of nodes of the labeled quotient graph(duplicate! not deleted due to
+                compatibility of HTS scripts, will be deleted in future).
             shortest_path (list): Shortest path of the spanning graph of the labeled quotient graph.
             spanning (list): Spanning graph of the labeled quotient graph.
             uncovered_pair (list): Atom pairs not covered by edges of the structure graph.
             covered_pair_lj (list): lj parameters for atom pairs covered by edges of the structure graph.
-            vbond_param_ave_covered (float): Repulsive potential well depth of atom pairs covered by edges 
-                of the structure graph. 
+            vbond_param_ave_covered (float): Repulsive potential well depth of atom pairs covered by edges
+                of the structure graph.
             vbond_param_ave (float): Repulsive potential well depth of atom pairs not covered by edges of
                 the structure graph.
             structure_species (list): Atom symbols of the labeled quotient graph.
@@ -1639,7 +1639,7 @@ class SLICES:
         square_diff=0
         # convert x to inner_p
         metric_tensor, cocycle_rep = self.convert_params(x, ndim, int(order - 1),lattice_type,metric_tensor_std)
-        if cocycle_rep is not None: 
+        if cocycle_rep is not None:
             periodic_rep = np.concatenate((cycle_rep, cocycle_rep))
         else:
             periodic_rep=cycle_rep
@@ -1663,14 +1663,14 @@ class SLICES:
             for i in range(len(uncovered_pair)):  #  cutoff        # epsilon       # sigma\
                 r_temp=distance_matrix[uncovered_pair[i][0],uncovered_pair[i][1]]
                 if r_temp<uncovered_pair_lj[i][0]:
-                    square_diff+=4*vbond_param_ave*(uncovered_pair_lj[i][1]/r_temp)**12 
+                    square_diff+=4*vbond_param_ave*(uncovered_pair_lj[i][1]/r_temp)**12
                     print("repul:"+str(uncovered_pair[i][0])+','+str(uncovered_pair[i][1])+','+str(round(r_temp,4))+','+str(round(4*vbond_param_ave*(uncovered_pair_lj[i][1]/r_temp)**12,4)))
         return square_diff
 
     def SLICES2space_group_number(self, SLICES, strategy=4, fix_duplicate_edge=True):
         """
         Convert a SLICES string to its space group number using Eon's graph theory method
-        and pymatgen's symmetry analysis. This method reconstructs only the standard 
+        and pymatgen's symmetry analysis. This method reconstructs only the standard
         placement structure without any optimizations to enhance performance.
 
         Args:
@@ -1687,7 +1687,7 @@ class SLICES:
         try:
             # Step 1: Parse the SLICES string to extract graph information
             self.from_SLICES(SLICES, strategy, fix_duplicate_edge)
-            
+
             # Step 2: Convert graph to network representation
             x_dat, net_voltage = self.convert_graph()
             net = Net(x_dat, dim=3)
@@ -1697,12 +1697,12 @@ class SLICES:
                 fig = plt.figure()
                 nx.draw(net.graph, ax=fig.add_subplot(111))
                 fig.savefig("graph.png")
-            
+
             # Step 3: Analyze graph topology
             net.simple_cycle_basis()
             net.get_lattice_basis()
             net.get_cocycle_basis()
-            
+
             # Step 4: Generate inner product target
             # Since we are not scaling lattice vectors, we can bypass inner_p_target calculations
             # and directly use the standard metric tensor.
@@ -1713,8 +1713,8 @@ class SLICES:
             # Use the standard metric tensor without scaling
             net.get_metric_tensor()
             lattice_vectors_std=np.linalg.cholesky(net.metric_tensor)
-            #deal with cocycle == none 
-            if net.cocycle is not None: 
+            #deal with cocycle == none
+            if net.cocycle is not None:
                 net.periodic_rep = np.concatenate((net.cycle_rep, net.cocycle_rep), axis=0)
             else:
                 net.periodic_rep=net.cycle_rep
@@ -1727,10 +1727,10 @@ class SLICES:
             G_nonDi = nx.MultiGraph()
             G_nonDi.add_nodes_from(net.vertices())
             G_nonDi.add_edges_from(net.all_edges())
-            mst = tree.minimum_spanning_edges(G_nonDi, algorithm="kruskal", data=False) 
+            mst = tree.minimum_spanning_edges(G_nonDi, algorithm="kruskal", data=False)
             spanning = list(mst)
              # convert spanning back to MultiDigraph's case
-            for i in range(len(spanning)):   
+            for i in range(len(spanning)):
                 for j in range(len(edges)):
                     if spanning[i][2]==edges[j][2]:
                         spanning[i]=edges[j]
@@ -1739,7 +1739,7 @@ class SLICES:
             spanning_graph.add_edges_from(spanning)
             shortest_path = nx.shortest_path(spanning_graph, source='1')
             arc_coord_std=net.lattice_arcs
-            if self.unstable_graph: 
+            if self.unstable_graph:
                 net.cocycle_rep = np.zeros((net.order-1, net.ndim)) + .5
                 #net.cocycle_rep = np.random.random((net.order-1, net.ndim)) - .5
                 net.periodic_rep = np.concatenate((net.cycle_rep, net.cocycle_rep), axis=0)
@@ -1747,13 +1747,13 @@ class SLICES:
             coordinates_std = self.get_coordinates(
                 arc_coord_std, num_nodes, shortest_path, spanning
             )
-            
+
             # Generate atom symbols
             atom_symbols = [str(ElementBase.from_Z(i)) for i in self.atom_types]
-            
+
             # Create the standard structure using original lattice vectors
             structure_recreated_std = Structure(lattice_vectors_std, atom_symbols, coordinates_std)
-            
+
             # Step 5: Determine the space group number using pymatgen's SpacegroupAnalyzer
             sga = SpacegroupAnalyzer(structure_recreated_std)
             space_group_num = sga.get_space_group_number()
@@ -1763,13 +1763,13 @@ class SLICES:
         return space_group_num
 
 
-    def to_structures(self, bond_scaling=1.05, delta_theta=0.005, delta_x=0.45,lattice_shrink=1,lattice_expand=1.25,angle_weight=0.5,vbond_param_ave_covered=0.00,vbond_param_ave=0.01,repul=True):        
+    def to_structures(self, bond_scaling=1.05, delta_theta=0.005, delta_x=0.45,lattice_shrink=1,lattice_expand=1.25,angle_weight=0.5,vbond_param_ave_covered=0.00,vbond_param_ave=0.01,repul=True):
         """The inverse transform of the crystal graph of a SLICES string to its crystal structure.
-        Convert edge_indices, to_jimages and atom_types stored in the InvCryRep instance back to 
+        Convert edge_indices, to_jimages and atom_types stored in the InvCryRep instance back to
         3 pymatgen structure objects and the energy per atom predicted with M3GNet.
 
         (1) barycentric embedding net with rescaled lattice based on the average bond scaling factors
-         calculated with modified GFN-FF predicted geometry 
+         calculated with modified GFN-FF predicted geometry
         (2) non-barycentric net embedding that matches bond lengths and bond angles predicted with
          modified GFN-FF
         (3) non-barycentric net embedding undergone cell optimization using M3GNet IAPs
@@ -1777,17 +1777,17 @@ class SLICES:
 
         Args:
             bond_scaling (float, optional): Bond scaling factor. Defaults to 1.05.
-            delta_theta (float): Angle change limit(deprecated! not deleted due to compatibility of HTS 
+            delta_theta (float): Angle change limit(deprecated! not deleted due to compatibility of HTS
                 scripts, will be deleted in future).
             delta_x (float, optional): Maximum x change allowed. Defaults to 0.45.
             lattice_shrink (int, optional): Maximum lattice shrinkage allowed. Defaults to 1.
             lattice_expand (float, optional): Maximum lattice expansion allowed. Defaults to 1.25.
             angle_weight (float, optional): Weight of angular terms in the object function. Defaults to 0.5.
-            vbond_param_ave_covered (float, optional): Repulsive potential well depth of atom pairs covered 
+            vbond_param_ave_covered (float, optional): Repulsive potential well depth of atom pairs covered
                 by edges of the structure graph. Defaults to 0.00.
-            vbond_param_ave (float, optional): Repulsive potential well depth of atom pairs not covered by 
+            vbond_param_ave (float, optional): Repulsive potential well depth of atom pairs not covered by
                 edges of the structure graph. Defaults to 0.01.
-            repul (bool, optional): Flag to indicate whether repulsive potential is considered in the object 
+            repul (bool, optional): Flag to indicate whether repulsive potential is considered in the object
                 function. Defaults to True.
 
         Returns:
@@ -1813,8 +1813,8 @@ class SLICES:
         uncovered_pair = self.get_uncovered_pair(net.graph)
         uncovered_pair_lj = self.get_uncovered_pair_lj(uncovered_pair)
         covered_pair_lj = self.get_covered_pair_lj()
-        #deal with cocycle == none 
-        if net.cocycle is not None: 
+        #deal with cocycle == none
+        if net.cocycle is not None:
             net.periodic_rep = np.concatenate((net.cycle_rep, net.cocycle_rep), axis=0)
         else:
             net.periodic_rep=net.cycle_rep
@@ -1830,10 +1830,10 @@ class SLICES:
         G_nonDi = nx.MultiGraph()
         G_nonDi.add_nodes_from(net.vertices())
         G_nonDi.add_edges_from(net.all_edges())
-        mst = tree.minimum_spanning_edges(G_nonDi, algorithm="kruskal", data=False) 
+        mst = tree.minimum_spanning_edges(G_nonDi, algorithm="kruskal", data=False)
         spanning = list(mst)
          # convert spanning back to MultiDigraph's case
-        for i in range(len(spanning)):   
+        for i in range(len(spanning)):
             for j in range(len(edges)):
                 if spanning[i][2]==edges[j][2]:
                     spanning[i]=edges[j]
@@ -1846,13 +1846,13 @@ class SLICES:
         lattice_vectors_scaled = self.get_rescaled_lattice_vectors(inner_p_target,inner_p_std,lattice_vectors_std,arc_coord_std)
         metric_tensor_std=np.dot(lattice_vectors_scaled,lattice_vectors_scaled.T)
         # add random pertubation to cocycle_rep to deal with unstable graph
-        if self.unstable_graph: 
+        if self.unstable_graph:
             net.cocycle_rep = np.zeros((net.order-1, net.ndim)) + .5
             #net.cocycle_rep = np.random.random((net.order-1, net.ndim)) - .5
             net.periodic_rep = np.concatenate((net.cycle_rep, net.cocycle_rep), axis=0)
             arc_coord_std=net.lattice_arcs
         # get the fractional coordinates of vertices of standard placement
-        coordinates_std=self.get_coordinates(arc_coord_std,num_nodes,shortest_path,spanning) 
+        coordinates_std=self.get_coordinates(arc_coord_std,num_nodes,shortest_path,spanning)
         # get the gfnff-scaled standard placement
         atom_symbols=[str(ElementBase.from_Z(i)) for i in self.atom_types]
         structure_recreated_std = Structure(lattice_vectors_scaled, atom_symbols,coordinates_std)
@@ -1881,12 +1881,12 @@ class SLICES:
             #get optimized structure
             net.metric_tensor, net.cocycle_rep = self.convert_params(x[0], net.ndim, int(net.order - 1),lattice_type,metric_tensor_std)
             lattice_vectors_new=np.linalg.cholesky(net.metric_tensor)
-            if net.cocycle is not None: 
+            if net.cocycle is not None:
                 net.periodic_rep = np.concatenate((net.cycle_rep, net.cocycle_rep), axis=0)
             else:
                 net.periodic_rep=net.cycle_rep
             arc_coord_new=net.lattice_arcs
-            coordinates_new=self.get_coordinates(arc_coord_new,num_nodes,shortest_path,spanning) 
+            coordinates_new=self.get_coordinates(arc_coord_new,num_nodes,shortest_path,spanning)
             structure_recreated_opt = Structure(lattice_vectors_new, atom_symbols,coordinates_new)
             if self.check_results:
                 print(x[0])
@@ -1899,7 +1899,7 @@ class SLICES:
             elif 20 < num_nodes <= 40:
                 structure_recreated_opt2, final_energy_per_atom=self.relax_large_cell1(structure_recreated_opt)
             else:
-                structure_recreated_opt2, final_energy_per_atom=self.relax_large_cell2(structure_recreated_opt)                                
+                structure_recreated_opt2, final_energy_per_atom=self.relax_large_cell2(structure_recreated_opt)
             return [structure_recreated_std, structure_recreated_opt,  structure_recreated_opt2 ],final_energy_per_atom
         except Exception as e:
             print(e)
@@ -1921,13 +1921,13 @@ class SLICES:
 
     def to_relaxed_structure(self, bond_scaling=1.05, delta_theta=0.005, delta_x=0.45,lattice_shrink=1,lattice_expand=1.25,angle_weight=0.5,vbond_param_ave_covered=0.000,vbond_param_ave=0.01,repul=True):
         """
-        Convert edge_indices, to_jimages and atom_types stored in the InvCryRep instance back to 
-        a pymatgen structure object: non-barycentric net embedding undergone cell optimization 
+        Convert edge_indices, to_jimages and atom_types stored in the InvCryRep instance back to
+        a pymatgen structure object: non-barycentric net embedding undergone cell optimization
         using M3GNet IAPs.
         If cell optimization failed, then raise error.
         """
         structures,final_energy_per_atom=self.to_structures(bond_scaling,delta_theta,delta_x,lattice_shrink,lattice_expand,angle_weight,vbond_param_ave_covered,vbond_param_ave,repul)
-        if len(structures)==3:        
+        if len(structures)==3:
             return structures[-1],final_energy_per_atom
         else:
             raise Exception("relax failed")
@@ -1946,7 +1946,7 @@ class SLICES:
 
     @function_timeout(seconds=360)
     def relax(self,struc):
-        """Cell optimization using CHGNET/M3GNET IAPs (time limit is set to 60 seconds 
+        """Cell optimization using CHGNET/M3GNET IAPs (time limit is set to 60 seconds
         to prevent buggy cell optimization that takes fovever to finish).
 
         Args:
@@ -1967,7 +1967,7 @@ class SLICES:
 
     @function_timeout(seconds=720)
     def relax_large_cell1(self,struc):
-        """Cell optimization using CHGNET/M3GNET IAPs (time limit is set to 360 seconds 
+        """Cell optimization using CHGNET/M3GNET IAPs (time limit is set to 360 seconds
         to prevent buggy cell optimization that takes fovever to finish).
 
         Args:
@@ -1988,7 +1988,7 @@ class SLICES:
 
     @function_timeout(seconds=2000)
     def relax_large_cell2(self,struc):
-        """Cell optimization using CHGNET/M3GNET IAPs (time limit is set to 1000 seconds 
+        """Cell optimization using CHGNET/M3GNET IAPs (time limit is set to 1000 seconds
         to prevent buggy cell optimization that takes fovever to finish).
 
         Args:
@@ -2009,12 +2009,12 @@ class SLICES:
         return final_structure,final_energy_per_atom
 
     def match_check(self,ori,opt,std,ltol=0.2, stol=0.3, angle_tol=5):
-        """ (1) Calculate match rates of structure (2) and (1) with respect to the 
+        """ (1) Calculate match rates of structure (2) and (1) with respect to the
                 original structure.
             (2) Calculate topological(Jaccard) distances of structuregraph of structure
                 (2) and (1) with respect to structuregraph of the original structure.
         """
-        ori_checked=Structure.from_str(ori.to(fmt="poscar"),"poscar") 
+        ori_checked=Structure.from_str(ori.to(fmt="poscar"),"poscar")
         opt_checked=Structure.from_str(opt.to(fmt="poscar"),"poscar")
         std_checked=Structure.from_str(std.to(fmt="poscar"),"poscar")
         sg_ori=self.structure2structure_graph(ori_checked)
@@ -2024,12 +2024,12 @@ class SLICES:
         return str(int(sm.fit(ori_checked, opt_checked))),str(int(sm.fit(ori_checked, std_checked))),str(sg_ori.diff(sg_opt,strict=False)["dist"]),str(sg_ori.diff(sg_std,strict=False)["dist"])
 
     def match_check3(self,ori,opt2,opt,std,ltol=0.2, stol=0.3, angle_tol=5):
-        """ (1) Calculate match rates of structure (3), (2) and (1) with 
+        """ (1) Calculate match rates of structure (3), (2) and (1) with
                 respect to the original structure.
             (2) Calculate topological distances of structuregraph of structure (3), (2)
                 and (1) with respect to structuregraph of the original structure.
         """
-        ori_checked=Structure.from_str(ori.to(fmt="poscar"),"poscar") 
+        ori_checked=Structure.from_str(ori.to(fmt="poscar"),"poscar")
         opt2_checked=Structure.from_str(opt2.to(fmt="poscar"),"poscar")
         opt_checked=Structure.from_str(opt.to(fmt="poscar"),"poscar")
         std_checked=Structure.from_str(std.to(fmt="poscar"),"poscar")
@@ -2041,9 +2041,9 @@ class SLICES:
         return str(int(sm.fit(ori_checked, opt2_checked))),str(int(sm.fit(ori_checked, opt_checked))),str(int(sm.fit(ori_checked, std_checked))),str(sg_ori.diff(sg_opt2,strict=False)["dist"]),str(sg_ori.diff(sg_opt,strict=False)["dist"]),str(sg_ori.diff(sg_std,strict=False)["dist"])
 
     def match_check4(self,ori,opt2,opt,std2,std,ltol=0.2, stol=0.3, angle_tol=5):
-        """ (1) Calculate match rates of structure (3), (2), (4) and (1) with respect to the 
+        """ (1) Calculate match rates of structure (3), (2), (4) and (1) with respect to the
                 original structure.
-            (2) Calculate topological distances of structuregraph of structure (3), (2), (4) 
+            (2) Calculate topological distances of structuregraph of structure (3), (2), (4)
                 and (1) with respect to structuregraph of the original structure.
 
         Args:
@@ -2053,7 +2053,7 @@ class SLICES:
             std2 (Structure): IAP-optimized rescaled Structure.
             std (Structure): Rescaled Structure.
             ltol (float, optional): Fractional length tolerance. Default is 0.2.
-            stol (float, optional): Site tolerance. Defined as the fraction of the average 
+            stol (float, optional): Site tolerance. Defined as the fraction of the average
                 free length per atom := ( V / Nsites ) ** (1/3). Default is 0.3.
             angle_tol (int, optional): Angle tolerance in degrees. Default is 5.
 
@@ -2062,12 +2062,12 @@ class SLICES:
             str: "1" if ZL*-Optimized Structure matches original Structure. "0" otherwise.
             str: "1" if IAP-optimized rescaled Structure matches original Structure. "0" otherwise.
             str: "1" if Rescaled Structure matches original Structure. "0" otherwise.
-            str: The topological distance between IAP-optimized Structure and original Structure.  
-            str: The topological distance between ZL*-Optimized Structure and original Structure.  
+            str: The topological distance between IAP-optimized Structure and original Structure.
+            str: The topological distance between ZL*-Optimized Structure and original Structure.
             str: The topological distance between IAP-optimized Rescaled Structure and original Structure.
             str: The topological distance between Rescaled Structure and original Structure.
         """
-        ori_checked=Structure.from_str(ori.to(fmt="poscar"),"poscar") 
+        ori_checked=Structure.from_str(ori.to(fmt="poscar"),"poscar")
         opt2_checked=Structure.from_str(opt2.to(fmt="poscar"),"poscar")
         opt_checked=Structure.from_str(opt.to(fmt="poscar"),"poscar")
         std_checked=Structure.from_str(std.to(fmt="poscar"),"poscar")
@@ -2079,4 +2079,3 @@ class SLICES:
         sg_std2=self.structure2structure_graph(std2_checked)
         sm = StructureMatcher(ltol, stol, angle_tol, primitive_cell=True, scale=True, attempt_supercell=False, comparator=ElementComparator())
         return str(int(sm.fit(ori_checked, opt2_checked))),str(int(sm.fit(ori_checked, opt_checked))),str(int(sm.fit(ori_checked, std2_checked))),str(int(sm.fit(ori_checked, std_checked))),str(sg_ori.diff(sg_opt2,strict=False)["dist"]),str(sg_ori.diff(sg_opt,strict=False)["dist"]),str(sg_ori.diff(sg_std2,strict=False)["dist"]),str(sg_ori.diff(sg_std,strict=False)["dist"])
-        

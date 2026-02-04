@@ -1,0 +1,67 @@
+#======================================================================
+# 双层转角石墨烯 LAMMPS 输入脚本
+# 自动生成 - 配合数据文件: yyh/CC/TBLG_{generator.angle}deg.lmp
+#======================================================================
+
+# ============ 基本设置 ============
+units metal
+atom_style atomic
+boundary p p p
+atom_modify map array
+
+# ============ 读取数据文件 ============
+read_data yyh/CC/TBLG_{generator.angle}deg.lmp
+
+# ============ 势函数设置 ============
+# 使用 hybrid/overlay 组合两种势函数
+# AIREBO 用于层内共价键，LJ 用于层间范德华相互作用
+pair_style hybrid/overlay airebo 3.0 lj/cut 15.0
+
+# 设置AIREBO势函数参数：用于层内相互作用
+pair_coeff 1 1 airebo CH.airebo C C  # 底层-底层
+pair_coeff 2 2 airebo CH.airebo C C  # 顶层-顶层
+
+# 设置LJ势函数参数：用于层间相互作用
+# 参数来源: Kolmogorov, A. N. & Crespi, V. H. Phys. Rev. B 71, 235415 (2005)
+# epsilon = 2.39 meV = 0.00239 eV, sigma = 3.41 Å
+pair_coeff 1 2 lj/cut 0.00239 3.41
+
+# 注：对于同一类型原子之间的非键相互作用，AIREBO已包含
+# 因此不需要再为1-1或2-2对设置LJ势
+
+# ============ 邻居列表设置 ============
+neighbor 2.0 bin
+neigh_modify every 10 delay 0 check yes
+
+# ============ 能量最小化 ============
+thermo 100
+thermo_style custom step temp pe ke etotal press vol
+minimize 1.0e-10 1.0e-10 10000 10000
+
+# ============ 保存最小化后的结构 ============
+write_data minimized.lmp
+write_restart minimized.restart
+
+# ============ 可选：可视化输出 ============
+dump 1 all atom 1000 relaxed.xyz
+dump_modify 1 element C
+
+# ============ 可选：NVT动力学模拟 ============
+# 取消注释以下行以运行动力学模拟
+# reset_timestep 0
+# velocity all create 300.0 12345
+# fix 1 all nvt temp 300.0 300.0 0.1
+# timestep 0.001
+# run 10000
+
+# ============ 可选：层间相互作用分析 ============
+# 计算层间相互作用能
+# group layer1 type 1
+# group layer2 type 2
+# compute inter layer2 group/group layer1
+# variable inter_energy equal c_inter
+# run 0
+# print "层间结合能 = ${inter_energy} eV"
+
+# ============ 脚本结束 ============
+print "模拟完成！"

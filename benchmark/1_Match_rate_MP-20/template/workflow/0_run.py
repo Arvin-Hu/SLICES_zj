@@ -35,7 +35,7 @@ for i  in range(len(cifs)):
     p = cifs[i]["cif"] #path to CIF file
     try:
         start_time = time.time()
-        ori = Structure.from_str(p,"cif")
+        ori = Structure.from_str(p,"cif") # 从CIF文件中读取原始结构。这里from_str的第二个参数指定了输入字符串的格式为CIF。
         num_atoms=len(ori.atomic_numbers)
         CG.from_cif(p)
         #print(bond_scaling, delta_theta, delta_x,lattice_shrink,lattice_expand,angle_weight,epsilon,repul)

@@ -57,6 +57,10 @@ RUN /bin/bash -c "source activate umat  && \
     pip install --no-cache ipython  && \
     conda clean --all -f -y "
 
+# yyh20260128 安装 gradio
+RUN /bin/bash -c "source activate umat && pip install --no-cache gradio && conda clean --all -f -y"
+
+
 RUN /bin/bash -c "source activate umat  &&  \
     pip install jupyter -i https://pypi.tuna.tsinghua.edu.cn/simple"
 

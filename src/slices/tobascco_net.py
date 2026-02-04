@@ -15,10 +15,6 @@ import numpy as np
 import sympy as sy
 
 
-
-
-
-
 DEG2RAD = np.pi / 180.0
 
 class SystreDB(dict):

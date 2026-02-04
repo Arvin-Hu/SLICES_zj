@@ -1,0 +1,42 @@
+services:
+  deephall:
+    image: slices:latest
+    container_name: slices_umat
+    working_dir: /crystal
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all  # 使用所有 GPU
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility  # 指定使用计算和实用程序功能
+    volumes:
+      - ~/workspace/code/Multimoda/SLICES_zj:/crystal
+      - /mnt:/mnt
+      - /home/perm:/home/perm
+    # - ~/workspace/code/DeepHall:/workspace 这里把用户目录换成了 ~ ，这是因为该目录在不同的主机环境下，应该是相同的或者类似的路径结构
+    # /home/yyh 不要换成 ~，因为在不同主机环境下，用户目录/home/yyh里的文件是不同的，本来就是需要加以区分的。换句话说，docker-compose-cpu.yml 应该适应不同的主机环境
+    ports:
+      - "127.0.0.1:3236:3236"
+    # 使用原镜像deephall_v4的 ENTRYPOINT (这是原来的镜像所使用的entrypoint，通过docker inspect slices:latest | grep -A 10 -B 5 "Entrypoint" 查看)
+    entrypoint:
+      - "/bin/bash"
+      - "--rcfile"
+      - "/etc/profile"
+      - "-c"
+    # source /opt/miniconda/etc/profile.d/conda.sh
+    # 1. 加载 conda 的 shell 函数，包括 conda activate 命令, 2. 设置 conda 相关的环境变量
+    # conda activate umat
+    # 1. 激活特定的 conda 环境, 2. 修改 PATH 环境变量，将 conda 环境的 bin 目录放在前面, 3. 设置 CONDA_PREFIX、CONDA_DEFAULT_ENV 等环境变量
+    command:
+      - "source /opt/miniconda/etc/profile.d/conda.sh && conda activate umat && exec /opt/miniconda/envs/umat/bin/jupyter lab --ip=0.0.0.0 --port=3236 --no-browser --allow-root --ServerApp.token='' --ServerApp.password='' --ServerApp.root_dir=/crystal --ServerApp.allow_origin='*' --ServerApp.allow_remote_access=1 --ServerApp.disable_check_xsrf=True"
+    restart: unless-stopped
+
+# 在本地 WSL 环境中，使用无认证配置的风险实际上很低(--ServerApp.password='' --ServerApp.disable_check_xsrf=True)，因为：
+# 1. 网络隔离：WSL 环境默认是隔离的
+# 2. 本地访问：只有本地进程可以访问
+# 3. 临时使用：开发环境通常不需要生产级安全
+
+# 使用方法
+# 启动服务
+# docker compose -f /home/perm/workspace/code/Multimoda/SLICES_zj/Dockerfile/docker-compose-yyh.yml up -d
+# 查看日志
+# docker compose -f /home/perm/workspace/code/Multimoda/SLICES_zj/Dockerfile/docker-compose-yyh.yml logs -f
+# 停止服务
+# docker compose -f /home/perm/workspace/code/Multimoda/SLICES_zj/Dockerfile/docker-compose-yyh.yml down
